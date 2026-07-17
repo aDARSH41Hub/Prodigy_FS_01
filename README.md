@@ -287,15 +287,15 @@ JWT_SECRET=your_secret_key
 
 ### Signup API
 
-<img src="./screenshots/Prodigy_FS_01_pic_signup.png" width="800"/>
+<img src="Backend/screenshots/Prodigy_FS_01_pic_signup.png" width="800"/>
 
 ### Login API
 
-<img src="./screenshots/Prodigy_FS_01_pic_login.png" width="800"/>
+<img src="Backend/screenshots/Prodigy_FS_01_pic_login.png" width="800"/>
 
 ### Protected Route
 
-<img src="./screenshots/Prodigy_FS_01_pic_protected-route.png" width="800"/>
+<img src="Backend/screenshots/Prodigy_FS_01_pic_protected-route.png" width="800"/>
 
 ---
 
