@@ -19,18 +19,19 @@ const userSchema = new mongoose.Schema(
         match:[/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/, "Please provide a valid email address",
         ], 
     },
+    role: {
+    type: String,
+    enum: ["user", "admin"],
+    default: "user"
+},
 
-    password:{
+    passwordHash:{
         type:String,
         required:[true, "Password is required"],
         minlength:[8, "Password must be at least 8 characters"],
         select:false,
     },
-    role:{
-        type:String,
-        enum:["user", "admin"],
-        default:"user"
-    },
+
     isActive:{
         type:Boolean,
         default:true}
@@ -42,12 +43,12 @@ const userSchema = new mongoose.Schema(
 }
 );    
 userSchema.pre("save", async function () {
-    if (!this.isModified("password")) return;
+    if (!this.isModified("passwordHash")) return;
 
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
 });
 userSchema.methods.comparePassword = function(candidatePassword){
-    return  bcrypt.compare(candidatePassword, this.password);
+    return  bcrypt.compare(candidatePassword, this.passwordHash);
 };
 module.exports = mongoose.model("user",userSchema);

@@ -1,51 +1,33 @@
 const User = require("../models/user");
-const jwt = require("jsonwebtoken");
-
-/**
- * Helper function to generate JWT token
- * (In a real app, move this to a separate utils/auth.js file)
- */
-const signToken = (id) => {
-  // Ensure you have JWT_SECRET in your .env file
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  });
-};
+const signToken = require("../utils/generateToken");
 
 /**
  * @desc    Register a new user
  * @route   POST /api/auth/signup
  * @access  Public
  */
-const signup = async (req, res, next) => {
+const signup = async (req, res) => {
   try {
-    // 1. Create the user
-    // We let Mongoose handle the validation (email format, password length) 
-    // and the pre-save hook handle the password hashing.
     const user = await User.create({
       name: req.body.name,
       email: req.body.email,
-      password: req.body.password,
+      passwordHash: req.body.password,
     });
 
-    //  Send Success Response
     res.status(201).json({
       success: true,
       message: "User registered successfully.",
-      // token, // Provided for mobile clients or local storage setups
       data: {
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
+          role: user.role,
         },
       },
     });
-
   } catch (error) {
-    //  Handle Specific Mongoose Errors
-
-    // Handle Duplicate Email (MongoDB Unique Constraint Error)
+    // Duplicate Email
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -53,30 +35,97 @@ const signup = async (req, res, next) => {
       });
     }
 
-    // Handle Mongoose Validation Errors (e.g., invalid email regex, password too short)
+    // Validation Errors
     if (error.name === "ValidationError") {
-      // Extract all custom validation messages from the schema
-      const messages = Object.values(error.errors).map((val) => val.message);
+      const messages = Object.values(error.errors).map(
+        (val) => val.message
+      );
+
       return res.status(400).json({
         success: false,
-        message: "Invalid input data",
+        message: "Invalid input data.",
         errors: messages,
       });
     }
 
-    // Pass all other unhandled errors to the global Express error handler
-    // rather than using console.error() and sending a hardcoded 500 here.
-    console.error("Signup Error:");
-    console.error(error);
-    console.error(error.stack);
-    
+    console.error("Signup Error:", error);
+
     return res.status(500).json({
-    success:false,
-    message:"Internal Server Error"
-});
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+/**
+ * @desc    Login user
+ * @route   POST /api/auth/login
+ * @access  Public
+ */
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check required fields
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required.",
+      });
+    }
+
+    // Find user and include passwordHash
+    const users = await User.find().select("+passwordHash");
+  
+    const user = await User.findOne({ email }).select("+passwordHash");
+
+    // User not found
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password.",
+      });
+    }
+
+    // Compare password
+    const isMatch = await user.comparePassword(password);
+    console.log("Password Match:", isMatch);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password.",
+      });
+    }
+
+    // Generate JWT
+    const token = signToken(user._id, user.role);
+
+    // Success response
+    return res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      token,
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Login Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };
 
 module.exports = {
   signup,
+  login,
 };
